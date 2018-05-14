@@ -32,12 +32,22 @@ namespace Abmes.DataPumper.WebApi
             services.AddScoped<IDataPumperDbConnection, DataPumperDbConnection>();
             services.AddTransient<IDbFileService, DbFileService>();
             services.AddTransient<ISqlConnectionStringProvider, SqlConnectionStringProvider>();
+
             services.AddTransient<IExporter, OracleExporter>();
             services.AddTransient<IImporter, OracleImporter>();
+
             services.AddTransient<IFileOpenCommand, OracleFileOpenCommand>();
+            services.AddFactoryFunc<IFileOpenCommand>();
+
             services.AddTransient<IFileCloseCommand, OracleFileCloseCommand>();
+            services.AddFactoryFunc<IFileCloseCommand>();
+
             services.AddTransient<IFileReadCommand, OracleFileReadCommand>();
+            services.AddFactoryFunc<IFileReadCommand>();
+
             services.AddTransient<IFileWriteCommand, OracleFileWriteCommand>();
+            services.AddFactoryFunc<IFileWriteCommand>();
+
             services.AddTransient<IFileDeleteCommand, OracleFileDeleteCommand>();
             services.AddTransient<IFileExistsQuery, OracleFileExistsQuery>();
             services.AddTransient<IGetFilesQuery, AmazonOracleGetFilesQuery>();

@@ -12,14 +12,27 @@ namespace Abmes.DataPumper.Library
 {
     public class DbFileService : IDbFileService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly Func<IFileOpenCommand> _fileOpenCommandFactory;
+        private readonly Func<IFileCloseCommand> _fileCloseCommandFactory;
+        private readonly Func<IFileReadCommand> _fileReadCommandFactory;
+        private readonly Func<IFileWriteCommand> _fileWriteCommandFactory;
         private readonly IFileExistsQuery _fileExsistsQuery;
         private readonly IFileDeleteCommand _fileDeleteCommand;
         private readonly IGetFilesQuery _getFilesQuery;
 
-        public DbFileService(IServiceProvider serviceProvider, IFileExistsQuery fileExsistsQuery, IFileDeleteCommand fileDeleteCommand, IGetFilesQuery getFilesQuery)
+        public DbFileService(
+            Func<IFileOpenCommand> fileOpenCommandFactory,
+            Func<IFileCloseCommand> fileCloseCommandFactory,
+            Func<IFileReadCommand> fileReadCommandFactory,
+            Func<IFileWriteCommand> fileWriteCommandFactory,
+            IFileExistsQuery fileExsistsQuery, 
+            IFileDeleteCommand fileDeleteCommand, 
+            IGetFilesQuery getFilesQuery)
         {
-            _serviceProvider = serviceProvider;
+            _fileOpenCommandFactory = fileOpenCommandFactory;
+            _fileCloseCommandFactory = fileCloseCommandFactory;
+            _fileReadCommandFactory = fileReadCommandFactory;
+            _fileWriteCommandFactory = fileWriteCommandFactory;
             _fileExsistsQuery = fileExsistsQuery;
             _fileDeleteCommand = fileDeleteCommand;
             _getFilesQuery = getFilesQuery;
@@ -45,10 +58,10 @@ namespace Abmes.DataPumper.Library
         public Stream GetFileReadStream(string fileName, string directoryName = null)
         {
             return new DbFileStream(
-                (IFileOpenCommand)_serviceProvider.GetService(typeof(IFileOpenCommand)),  // ne se polzva generichen metod za da ne se dobavia dependency wyrhu dopylnitelno asembli za DI
-                (IFileCloseCommand)_serviceProvider.GetService(typeof(IFileCloseCommand)),
-                (IFileReadCommand)_serviceProvider.GetService(typeof(IFileReadCommand)),
-                (IFileReadCommand)_serviceProvider.GetService(typeof(IFileReadCommand)),
+                _fileOpenCommandFactory(),
+                _fileCloseCommandFactory(),
+                _fileReadCommandFactory(),
+                _fileReadCommandFactory(),
                 null,
                 null,
                 FileAccessMode.Read,
@@ -59,12 +72,12 @@ namespace Abmes.DataPumper.Library
         public Stream GetFileWriteStream(string fileName, string directoryName = null)
         {
             return new DbFileStream(
-                (IFileOpenCommand)_serviceProvider.GetService(typeof(IFileOpenCommand)),
-                (IFileCloseCommand)_serviceProvider.GetService(typeof(IFileCloseCommand)),
+                _fileOpenCommandFactory(),
+                _fileCloseCommandFactory(),
                 null,
                 null,
-                (IFileWriteCommand)_serviceProvider.GetService(typeof(IFileWriteCommand)),
-                (IFileWriteCommand)_serviceProvider.GetService(typeof(IFileWriteCommand)),
+                _fileWriteCommandFactory(),
+                _fileWriteCommandFactory(),
                 FileAccessMode.Write,
                 fileName,
                 directoryName);

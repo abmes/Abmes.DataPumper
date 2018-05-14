@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Abmes.DataPumper.Library;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
-using Abmes.DataPumper.Library;
 using System;
 using System.Diagnostics;
 
@@ -9,19 +8,16 @@ namespace Abmes.DataPumper
 {
     public class SqlConnectionStringProvider : ISqlConnectionStringProvider
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public SqlConnectionStringProvider(IServiceProvider serviceProvider)
+        public SqlConnectionStringProvider(IHttpContextAccessor httpContextAccessor)
         {
-            _serviceProvider = serviceProvider;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public string GetConnectionString()
         {
-            var httpContextAccessor = _serviceProvider.GetService<IHttpContextAccessor>();
-            Debug.Assert(httpContextAccessor != null);
-
-            var httpContext = httpContextAccessor.HttpContext;
+            var httpContext = _httpContextAccessor.HttpContext;
 
             // tezi ne triabva da idvat ot querystring a ot headers. ili pone usera i parolata
 
