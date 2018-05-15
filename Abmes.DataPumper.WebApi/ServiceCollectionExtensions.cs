@@ -10,7 +10,7 @@ namespace Abmes.DataPumper.WebApi
     {
         public static IServiceCollection AddFactoryFunc<TService>(this IServiceCollection services) where TService : class
         {
-            return services.AddSingleton<Func<TService>>(ctx => () => ctx.GetService<TService>());
+            return services.AddTransient<Func<TService>>(ctx => () => ctx.GetService<TService>());
         }
     }
 }
