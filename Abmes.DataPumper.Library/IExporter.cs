@@ -9,7 +9,7 @@ namespace Abmes.DataPumper.Library
 {
     public interface IExporter
     {
-        Task StartExportSchemaAsync(string schemaName, string dumpFileName, string logFileName, string directoryName, CancellationToken cancellationToken);
+        Task StartExportSchemaAsync(string schemaName, string dumpFileName, string logFileName, string directoryName, string dumpFileSize, CancellationToken cancellationToken);
         Task<ExportLogData> GetExportLogDataAsync(string schemaName, string logFileName, string directoryName, CancellationToken cancellationToken);
     }
 }

@@ -23,19 +23,23 @@ namespace Abmes.DataPumper.Library
             _dbFileService = dbFileService;
         }
 
-        public async Task StartExportSchemaAsync(string schemaName, string dumpFileName, string logFileName, string directoryName, CancellationToken cancellationToken)
+        private string OraclizeFileName(string fileName)
+            =>  fileName?.Replace("~partno~", "%U");
+
+        public async Task StartExportSchemaAsync(string schemaName, string dumpFileName, string logFileName, string directoryName, string dumpFileSize, CancellationToken cancellationToken)
         {
             var sql =
                 "begin" + Environment.NewLine +
-                "  DataPumperUtils.StartExportSchema(:SCHEMA_NAME, :DUMP_FILE_NAME, :LOG_FILE_NAME, :DIRECTORY_NAME);" + Environment.NewLine +
+                "  DataPumperUtils.StartExportSchema(:SCHEMA_NAME, :DUMP_FILE_NAME, :LOG_FILE_NAME, :DIRECTORY_NAME, :DUMP_FILE_SIZE);" + Environment.NewLine +
                 "end;";
 
             using (var command = new OracleCommand(sql, _dbConnection.OracleConnection))
             {
                 command.Parameters.Add(new OracleParameter("SCHEMA_NAME", schemaName));
-                command.Parameters.Add(new OracleParameter("DUMP_FILE_NAME", dumpFileName));
+                command.Parameters.Add(new OracleParameter("DUMP_FILE_NAME", OraclizeFileName(dumpFileName)));
                 command.Parameters.Add(new OracleParameter("LOG_FILE_NAME", logFileName));
                 command.Parameters.Add(new OracleParameter("DIRECTORY_NAME", directoryName));
+                command.Parameters.Add(new OracleParameter("DUMP_FILE_SIZE", dumpFileSize));
                 await command.ExecuteNonQueryAsync(cancellationToken);
             }
         }

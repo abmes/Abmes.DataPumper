@@ -17,6 +17,9 @@ namespace Abmes.DataPumper.Library
             _dbConnection = dbConnection;
         }
 
+        private string OraclizeFileName(string fileName)
+            => fileName?.Replace("~partno~", "%U");
+
         public async Task StartImportSchemaAsync(
             string fromSchemaName, 
             string toSchemaName, 
@@ -36,7 +39,7 @@ namespace Abmes.DataPumper.Library
                 command.Parameters.Add(new OracleParameter("FROM_SCHEMA_NAME", fromSchemaName));
                 command.Parameters.Add(new OracleParameter("TO_SCHEMA_NAME", toSchemaName));
                 command.Parameters.Add(new OracleParameter("TO_SCHEMA_PASSWORD", toSchemaPassword));
-                command.Parameters.Add(new OracleParameter("DUMP_FILE_NAME", dumpFileName));
+                command.Parameters.Add(new OracleParameter("DUMP_FILE_NAME", OraclizeFileName(dumpFileName)));
                 command.Parameters.Add(new OracleParameter("LOG_FILE_NAME", logFileName));
                 command.Parameters.Add(new OracleParameter("DIRECTORY_NAME", directoryName));
                 await command.ExecuteNonQueryAsync(cancellaionToken);

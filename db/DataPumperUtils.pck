@@ -14,11 +14,11 @@ create or replace package DataPumperUtils authid CURRENT_USER is
   procedure DeleteFile(AFileName in Varchar2, ADirectoryName in Varchar2:= null);
 
   -- synchronous
-  function ExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Varchar2;
+  function ExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2:= null) return Varchar2;
   function ImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Varchar2;
 
   -- asynchronous
-  procedure StartExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null);
+  procedure StartExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2:= null);
   procedure StartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null);
 end;
 /
@@ -206,7 +206,7 @@ create or replace package body DataPumperUtils is
   end;
 
 
-  function DoStartExportSchemaJob(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Number is
+  function DoStartExportSchemaJob(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2) return Number is
     DataPumpJobHandle Number;
   begin
     DataPumpJobHandle:=
@@ -214,7 +214,7 @@ create or replace package body DataPumperUtils is
         operation => 'EXPORT',
         job_mode => 'SCHEMA');
       
-    DBMS_DATAPUMP.add_file(DataPumpJobHandle, ADumpFileName, ADirectoryName, reusefile => 1);
+    DBMS_DATAPUMP.add_file(DataPumpJobHandle, ADumpFileName, ADirectoryName, filesize => ADumpFileSize, reusefile => 1);
     DBMS_DATAPUMP.add_file(DataPumpJobHandle, ALogFileName, ADirectoryName, filetype => DBMS_DATAPUMP.KU$_FILE_TYPE_LOG_FILE, reusefile => 1);
 
     DBMS_DATAPUMP.metadata_filter(DataPumpJobHandle,'SCHEMA_EXPR','= ' || '''' || Upper(ASchemaName) || '''');
@@ -246,11 +246,11 @@ create or replace package body DataPumperUtils is
   end;
 
 
-  function ExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Varchar2 is
+  function ExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2:= null) return Varchar2 is
     DataPumpJobHandle Number;
     DataPumpJobFinalState Varchar2(4000);
   begin
-    DataPumpJobHandle:= DoStartExportSchemaJob(ASchemaName, ADumpFileName, ALogFileName, ADirectoryName);
+    DataPumpJobHandle:= DoStartExportSchemaJob(ASchemaName, ADumpFileName, ALogFileName, ADirectoryName, ADumpFileSize);
     
     DBMS_DATAPUMP.wait_for_job(
       handle => DataPumpJobHandle,
@@ -260,10 +260,10 @@ create or replace package body DataPumperUtils is
   end;
 
 
-  procedure StartExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) is
+  procedure StartExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2:= null) is
     DataPumpJobHandle Number;
   begin
-    DataPumpJobHandle:= DoStartExportSchemaJob(ASchemaName, ADumpFileName, ALogFileName, ADirectoryName);
+    DataPumpJobHandle:= DoStartExportSchemaJob(ASchemaName, ADumpFileName, ALogFileName, ADirectoryName, ADumpFileSize);
     
     DBMS_DATAPUMP.detach(DataPumpJobHandle);
   end;

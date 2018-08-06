@@ -216,9 +216,10 @@ namespace Abmes.DataPumper.WebApi.Controllers
             [FromQuery] string schemaName,
             [FromQuery] string dumpFileName, 
             [FromQuery] string logFileName,
-            [FromQuery] string directoryName)
+            [FromQuery] string directoryName,
+            [FromQuery] string dumpFileSize)
         {
-            await _exporter.StartExportSchemaAsync(schemaName, dumpFileName, logFileName, directoryName, cancellationToken);
+            await _exporter.StartExportSchemaAsync(schemaName, dumpFileName, logFileName, directoryName, dumpFileSize, cancellationToken);
         }
 
         // POST api/datapumper/StartImportSchema?fromSchemaName=DEV_BLA&toSchemaName=DEV_BLA&toSchemaPassword=DevBlaPass123&dumpFileName=dev_bla.dmp&logFileName=dev_bla-import.log&directoryName=DATA_PUMP_DIR
