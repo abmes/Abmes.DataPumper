@@ -164,23 +164,21 @@ namespace Abmes.DataPumper.WebApi.Controllers
                 {
                     using (var reader = SharpCompress.Readers.ReaderFactory.Open(sourceStream))
                     {
-                        var entryFound = false;
                         while (reader.MoveToNextEntry())
                         {
-                            if (string.Equals(reader.Entry.Key, fileName, StringComparison.InvariantCultureIgnoreCase))
+                            if ((string.IsNullOrEmpty(fileName)) || (string.Equals(reader.Entry.Key, fileName, StringComparison.InvariantCultureIgnoreCase)))
                             {
-                                entryFound = true;
-                                break;
-                            }
-                        }
-
-                        if (entryFound)
-                        {
-                            using (var entryStream = reader.OpenEntryStream())
-                            {
-                                using (var fileStream = _dbFileService.GetFileWriteStream(fileName, directoryName))
+                                using (var entryStream = reader.OpenEntryStream())
                                 {
-                                    await entryStream.CopyToParallelAsync(fileStream, 32000 * 10, cancellationToken);
+                                    using (var fileStream = _dbFileService.GetFileWriteStream(reader.Entry.Key, directoryName))
+                                    {
+                                        await entryStream.CopyToParallelAsync(fileStream, 32000 * 10, cancellationToken);
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(fileName))
+                                {
+                                    break;
                                 }
                             }
                         }
