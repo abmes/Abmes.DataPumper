@@ -154,9 +154,9 @@ namespace Abmes.DataPumper.WebApi.Controllers
             }
         }
 
-        [Route("PutUnzipFile/{fileName}")]
+        [Route("PutUnzipFile")]
         [HttpPut]
-        public async Task PutUnzipFile(CancellationToken cancellationToken, string fileName, [FromQuery] string sourceUrl, [FromQuery] string directoryName)
+        public async Task PutUnzipFile(CancellationToken cancellationToken, [FromQuery] string fileName, [FromQuery] string sourceUrl, [FromQuery] string directoryName)
         {
             using (var httpClient = new HttpClient())
             {
@@ -187,9 +187,9 @@ namespace Abmes.DataPumper.WebApi.Controllers
             }
         }
 
-        [Route("PutUngzipFile/{fileName}")]
+        [Route("PutUngzipFile")]
         [HttpPut]
-        public async Task PutUngzipFile(CancellationToken cancellationToken, string fileName, [FromQuery] string sourceUrl, [FromQuery] string directoryName)
+        public async Task PutUngzipFile(CancellationToken cancellationToken, [FromQuery] string fileName, [FromQuery] string sourceUrl, [FromQuery] string directoryName)
         {
             using (var httpClient = new HttpClient())
             {
