@@ -28,6 +28,8 @@ namespace Abmes.DataPumper.Library
 
         public async Task StartExportSchemaAsync(string schemaName, string dumpFileName, string logFileName, string directoryName, string dumpFileSize, CancellationToken cancellationToken)
         {
+            await CleanFilesAsync(schemaName, directoryName, dumpFileName, cancellationToken);
+
             var sql =
                 "begin" + Environment.NewLine +
                 "  DataPumperUtils.StartExportSchema(:SCHEMA_NAME, :DUMP_FILE_NAME, :LOG_FILE_NAME, :DIRECTORY_NAME, :DUMP_FILE_SIZE);" + Environment.NewLine +
@@ -41,6 +43,21 @@ namespace Abmes.DataPumper.Library
                 command.Parameters.Add(new OracleParameter("DIRECTORY_NAME", directoryName));
                 command.Parameters.Add(new OracleParameter("DUMP_FILE_SIZE", dumpFileSize));
                 await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+        }
+
+        private async Task CleanFilesAsync(string schemaName, string directoryName, string dumpFileName, CancellationToken cancellationToken)
+        {
+            var filter = dumpFileName.Replace("~partno~", "*");
+
+            var files = await _dbFileService.GetFilesAsync(directoryName, cancellationToken);
+            var fileNames = files.Select(x => x.FileName);
+
+            var schemaFileNames = FileMaskUtils.FileNamesMatchingFilter(fileNames, filter);
+
+            foreach (var schemaFileName in schemaFileNames)
+            {
+                await _dbFileService.DeleteFileAsync(schemaFileName, directoryName, cancellationToken);
             }
         }
 
