@@ -48,7 +48,7 @@ namespace Abmes.DataPumper.Library
 
         private async Task CleanFilesAsync(string schemaName, string directoryName, string dumpFileName, CancellationToken cancellationToken)
         {
-            var filter = dumpFileName.Replace("~partno~", "*");
+            var filter = dumpFileName?.Replace("~partno~", "*");
 
             var files = await _dbFileService.GetFilesAsync(directoryName, cancellationToken);
             var fileNames = files.Select(x => x.FileName);
