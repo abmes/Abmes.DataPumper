@@ -20,10 +20,14 @@ create or replace package DataPumperUtils authid CURRENT_USER is
   -- asynchronous
   procedure StartExportSchema(ASchemaName in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null, ADumpFileSize in Varchar2:= null);
   procedure StartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null);
+  procedure DoStartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null);
+
 end;
 /
 create or replace package body DataPumperUtils is
 
+  ImportJobName constant Varchar2(200):= 'DATAPUMPER_IMPORT_JOB';
+  ImportJobComment constant Varchar2(200):= 'DataPumper Import Job';
   DefaultDirectoryName constant Varchar2(200):= 'DATA_PUMP_DIR';
   MaxChunkSize constant Number := 32000;  -- used in GetBlobFromFile
 
@@ -305,15 +309,9 @@ create or replace package body DataPumperUtils is
   end;
 
 
-  function DoStartImportSchemaJob(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Number is
+  function DoStartImportSchemaDataPumpJob(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) return Number is
     DataPumpJobHandle Number;
   begin
-    if UserExists(AToSchemaName) then
-      DropUser(AToSchemaName);
-    end if;
-  
-    CreateUser(AToSchemaName, AToSchemaPassword);
-    
     DataPumpJobHandle:=
       DBMS_DATAPUMP.open(
         operation => 'IMPORT',
@@ -339,9 +337,61 @@ create or replace package body DataPumperUtils is
       Upper(AFromSchemaName),
       Upper(AToSchemaName));
 
+
+    if UserExists(AToSchemaName) then
+      
+      DBMS_DATAPUMP.log_entry(
+          handle => DataPumpJobHandle,
+          message => 'Schema user ' || AToSchemaName || ' already exists.'
+      );
+      
+      DBMS_DATAPUMP.log_entry(
+          handle => DataPumpJobHandle,
+          message => 'Drop user ' || AToSchemaName || ' started at ' ||  to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
+      );
+      
+      begin
+        DropUser(AToSchemaName);
+      exception
+        when others then
+          DBMS_DATAPUMP.log_entry(
+              handle => DataPumpJobHandle,
+              message => 'Could not drop user ' || AToSchemaName || '. Error: ' || SQLCODE || ' ' || SQLERRM
+          );
+          raise;
+      end;
+      
+      DBMS_DATAPUMP.log_entry(
+          handle => DataPumpJobHandle,
+          message => 'Drop user ' || AToSchemaName || ' finished successfully at ' ||  to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
+      );
+      
+    end if;
+  
     DBMS_DATAPUMP.log_entry(
         handle => DataPumpJobHandle,
-        message => 'Job starting at '||to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
+        message => 'Create user ' || AToSchemaName || ' started at ' ||  to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
+    );
+      
+    begin
+      CreateUser(AToSchemaName, AToSchemaPassword);
+    exception
+      when others then
+        DBMS_DATAPUMP.log_entry(
+            handle => DataPumpJobHandle,
+            message => 'Could not create user ' || AToSchemaName || '. Error: ' || SQLCODE || ' ' || SQLERRM
+        );
+        raise;
+    end;
+    
+    DBMS_DATAPUMP.log_entry(
+        handle => DataPumpJobHandle,
+        message => 'Create user ' || AToSchemaName || ' finished successfully at ' ||  to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
+    );
+
+    DBMS_DATAPUMP.log_entry(
+        handle => DataPumpJobHandle,
+        message => 'Import job starting at ' || to_char(sysdate, 'YYYY-MM-DD HH24:MI:SS')
     );      
 
     DBMS_DATAPUMP.start_job(DataPumpJobHandle);
@@ -354,7 +404,7 @@ create or replace package body DataPumperUtils is
     DataPumpJobHandle Number;
     DataPumpJobFinalState Varchar2(4000);
   begin
-    DataPumpJobHandle:= DoStartImportSchemaJob(AFromSchemaName, AToSchemaName, AToSchemaPassword, ADumpFileName, ALogFileName, ADirectoryName);
+    DataPumpJobHandle:= DoStartImportSchemaDataPumpJob(AFromSchemaName, AToSchemaName, AToSchemaPassword, ADumpFileName, ALogFileName, ADirectoryName);
 
     DBMS_DATAPUMP.wait_for_job(
       handle => DataPumpJobHandle,
@@ -364,12 +414,64 @@ create or replace package body DataPumperUtils is
   end;
 
 
-  procedure StartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) is
+  procedure DoStartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2) is
     DataPumpJobHandle Number;
   begin
-    DataPumpJobHandle:= DoStartImportSchemaJob(AFromSchemaName, AToSchemaName, AToSchemaPassword, ADumpFileName, ALogFileName, ADirectoryName);
-
-    DBMS_DATAPUMP.detach(DataPumpJobHandle);
+    begin
+      DataPumpJobHandle:= DoStartImportSchemaDataPumpJob(AFromSchemaName, AToSchemaName, AToSchemaPassword, ADumpFileName, ALogFileName, ADirectoryName);
+      DBMS_DATAPUMP.detach(DataPumpJobHandle);
+    exception
+      when others then
+        null;
+    end;
   end;
+
+
+  function JobExists(AJobName in Varchar2) return Boolean is
+    cnt Number(10);
+  begin
+    select
+      Count(*)
+    into
+      cnt
+    from
+      user_scheduler_jobs j
+    where
+      (j.job_name = AJobName);
+      
+    return (cnt > 0);
+  end;
+  
+
+  procedure StartImportSchema(AFromSchemaName in Varchar2, AToSchemaName in Varchar2, AToSchemaPassword in Varchar2, ADumpFileName in Varchar2, ALogFileName in Varchar2, ADirectoryName in Varchar2:= null) is
+  begin
+    if JobExists(ImportJobName) then
+      DBMS_SCHEDULER.drop_job(job_name => ImportJobName, force => true);      
+    end if;
+  
+    DBMS_SCHEDULER.create_job (
+        job_name        => ImportJobName,
+        job_type        => 'STORED_PROCEDURE',
+        job_action      => 'DataPumperUtils.DoStartImportSchema',
+        number_of_arguments => 6,
+        start_date      => null,
+        repeat_interval => null,
+        end_date        => null,
+        enabled         => false,
+        auto_drop       => true,       
+        comments        => ImportJobComment);
+
+    dbms_scheduler.set_attribute(ImportJobName, 'max_runs', 1);
+
+    dbms_scheduler.set_job_argument_value(ImportJobName, 1 , AFromSchemaName);
+    dbms_scheduler.set_job_argument_value(ImportJobName, 2 , AToSchemaName);
+    dbms_scheduler.set_job_argument_value(ImportJobName, 3 , AToSchemaPassword);
+    dbms_scheduler.set_job_argument_value(ImportJobName, 4 , ADumpFileName);
+    dbms_scheduler.set_job_argument_value(ImportJobName, 5 , ALogFileName);
+    dbms_scheduler.set_job_argument_value(ImportJobName, 6 , ADirectoryName);
+
+    DBMS_SCHEDULER.enable(ImportJobName);    
+  end;
+  
 end;
 /
